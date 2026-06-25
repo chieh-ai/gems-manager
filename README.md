@@ -79,3 +79,4 @@
    * **Build and deployment** 下的 **Branch** 選擇 **`main`**，資料夾選擇 **`/ (root)`**。
    * 點選 **Save**。
 4. 等待 1~2 分鐘，GitHub 會在該頁面頂端顯示您的專屬發佈網址 (例如：`https://您的帳號.github.io/gems-manager/`)。現在，您可以從任何裝置登入這個網址直接使用該系統了！
+# gems-manager
