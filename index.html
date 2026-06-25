@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gem 提示詞管理系統</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { background-color: #fcfbf9; }
+  </style>
+</head>
+<body class="text-gray-800 antialiased font-sans">
+
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-amber-500 text-white p-2 rounded-lg shadow-sm">
+          <i class="fa-solid fa-gem text-xl"></i>
+        </div>
+        <h1 class="text-xl font-bold tracking-wider text-gray-900">Gem 提示詞管理系統</h1>
+      </div>
+      <button id="addGemBtn" onclick="openFormModal('add')" class="cursor-pointer bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2 shadow-sm">
+        <i class="fa-solid fa-plus"></i>
+        <span>新增 Gem</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div class="flex flex-col md:flex-row items-stretch md:items-center gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
+      <div class="relative flex-1">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </span>
+        <input type="text" id="searchInput" placeholder="輸入 Gem 名稱關鍵字搜尋..." class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition">
+      </div>
+      
+      <div class="relative w-full md:w-64">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+          <i class="fa-solid fa-filter text-xs"></i>
+        </span>
+        <select id="categoryFilterSelect" onchange="handleCategoryFilterChange()" class="w-full pl-8 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer font-medium text-gray-700">
+          <option value="全部">🌐 全部類別</option>
+        </select>
+      </div>
+
+      <div class="flex items-center justify-start md:justify-end shrink-0 pl-1 md:pl-2 border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
+        <label class="inline-flex items-center cursor-pointer group relative select-none">
+          <span class="me-2.5 text-sm font-semibold text-gray-600 group-hover:text-amber-600 transition-colors flex items-center space-x-1.5">
+            <i class="fa-solid fa-star text-amber-400"></i>
+            <span>收藏</span>
+          </span>
+          <input type="checkbox" id="globalFavoriteFilter" onchange="handleGlobalFavoriteFilterChange()" class="sr-only peer">
+          <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after: commissary after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500 relative"></div>
+        </label>
+      </div>
+    </div>
+
+    <div id="loadingStatus" class="text-center py-12">
+      <i class="fa-solid fa-spinner fa-spin text-3xl text-amber-500 mb-3"></i>
+      <p class="text-gray-500 text-sm">正在同步雲端資料庫...</p>
+    </div>
+
+    <div id="tableContainer" class="hidden space-y-4">
+      <div class="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <th class="px-6 py-4 w-24">編號</th>
+                <th class="px-6 py-4 w-40">Gem 類別</th>
+                <th class="px-6 py-4">Gem 名稱</th>
+                <th class="px-6 py-4 w-32 text-center">收藏</th>
+                <th class="px-6 py-4 text-right w-64">操作</th>
+              </tr>
+            </thead>
+            <tbody id="gemTableBody" class="divide-y divide-gray-100 text-sm"></tbody>
+          </table>
+        </div>
+        <div id="emptyState" class="hidden text-center py-12">
+          <i class="fa-regular fa-folder-open text-4xl text-gray-300 mb-3"></i>
+          <p class="text-gray-500 text-sm">沒有找到符合條件的 Gem 資料</p>
+        </div>
+      </div>
+
+      <div id="paginationControlZone" class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white px-6 py-4 rounded-xl border border-gray-200 shadow-xs">
+        <div class="flex items-center space-x-3 text-xs text-gray-500">
+          <span>共 <span id="totalRecordsText" class="font-bold text-gray-700">0</span> 筆資料</span>
+          <span class="text-gray-300">|</span>
+          <div class="flex items-center space-x-1.5">
+            <span>每頁顯示：</span>
+            <select id="pageSizeSelect" onchange="handlePageSizeChange()" class="bg-gray-50 border border-gray-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium text-gray-700 cursor-pointer">
+              <option value="10" selected>10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="all">全部</option>
+            </select>
+            <span>筆</span>
+          </div>
+        </div>
+        <div class="flex items-center space-x-1.5" id="paginationButtons"></div>
+      </div>
+    </div>
+
+    <footer class="pt-6 border-t border-gray-200/60 text-center space-y-2 text-xs text-gray-400">
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-4 text-[11px]">
+        <div>
+          <i class="fa-regular fa-calendar-check mr-1 text-gray-300"></i>Last Update：<span id="lastDeployTime" class="font-mono text-gray-500">載入中...</span>
+        </div>
+        <span class="hidden sm:inline text-gray-300">|</span>
+        <div>
+          <i class="fa-solid fa-code-branch mr-1 text-gray-300"></i>Version：<span id="gasVersionDesc" class="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-sm">1.53 (Decoupled)</span>
+        </div>
+      </div>
+      <div class="font-medium tracking-wide text-gray-400 pt-1">
+        Powered By <span class="font-semibold text-gray-700">Chieh Wu</span>
+      </div>
+    </footer>
+  </main>
+
+  <div id="formModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-100">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+        <h3 id="modalTitle" class="text-lg font-bold text-gray-900">新增 Google Gem</h3>
+        <button type="button" onclick="closeModal('formModal')" class="cursor-pointer text-gray-400 hover:text-gray-600 transition"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form id="gemForm" onsubmit="return false;" class="p-6 space-y-4">
+        <input type="hidden" id="formAction" value="add">
+        <input type="hidden" id="formRowIndex" value="">
+        <input type="hidden" id="formFileUrl" value="">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Gem 類別 <span class="text-red-500">*</span></label>
+            <select id="gemCategory" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
+              <option value="" disabled selected hidden>請選擇 Gem 類別...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Gem 名稱 <span class="text-red-500">*</span></label>
+            <input type="text" id="gemName" placeholder="請輸入明確的名稱" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">說明（使用者）</label>
+          <textarea id="gemDescription" rows="2" placeholder="簡述這個 Gem 的主要用途與使用對象..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">使用說明（需求規格） <span class="text-red-500">*</span></label>
+          <textarea id="gemSpecification" rows="5" placeholder="請貼上具體的提示詞設定..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-mono text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">預設工具</label>
+            <input type="text" id="gemTools" placeholder="例如：Google Workspace" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">來源</label>
+            <input type="text" id="gemSource" placeholder="例如：自創" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+          </div>
+        </div>
+
+        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200/60 space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">相關資訊（附件管理）</label>
+            <input type="file" id="gemFile" multiple class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 cursor-pointer">
+          </div>
+          
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Gem 連結 URL</label>
+            <div class="relative rounded-lg shadow-xs">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                <i class="fa-solid fa-link text-xs"></i>
+              </div>
+              <input type="url" id="gemUrl" placeholder="https://gemini.google.com/gems/share/..." class="w-full pl-8 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+          </div>
+
+          <div class="flex items-center pt-1">
+            <label class="inline-flex items-center cursor-pointer group relative">
+              <input type="checkbox" id="gemIsFavorite" class="sr-only peer">
+              <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after: commissary after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500 relative"></div>
+              <span class="ms-3 text-sm font-semibold text-gray-700 group-hover:text-amber-600 transition-colors flex items-center space-x-1">
+                <i class="fa-solid fa-star text-amber-400"></i>
+                <span>加入收藏 Gem</span>
+              </span>
+            </label>
+          </div>
+
+          <div id="newFilesList" class="mt-3 space-y-1 hidden">
+            <p class="text-xs font-bold text-amber-600">本次新選取的待上傳檔案：</p>
+            <ul id="newFilesUl" class="text-xs text-gray-600 list-disc list-inside bg-white p-2 rounded border border-gray-100"></ul>
+          </div>
+
+          <div id="historyFilesZone" class="mt-4 hidden">
+            <p class="text-xs font-bold text-gray-500 mb-1.5">雲端硬碟已同步附件名單：</p>
+            <div id="historyFilesContainer" class="space-y-1.5"></div>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-gray-200 flex items-center justify-between">
+          <div>
+            <button type="button" id="deleteGemRecordBtn" onclick="handleRecordDelete()" class="cursor-pointer bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-1.5 shadow-xs hidden">
+              <i class="fa-regular fa-trash-can"></i>
+              <span>刪除這筆資料</span>
+            </button>
+          </div>
+          <div class="flex space-x-2">
+            <button type="button" onclick="closeModal('formModal')" class="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition">取消</button>
+            <button type="button" id="submitBtn" onclick="handleFormSubmit(event)" class="cursor-pointer bg-gray-900 hover:bg-gray-800 text-white px-5 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2">
+              <span id="submitBtnText">儲存資料</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="viewModal" class="fixed inset-0 z-50 hidden bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto border border-gray-100 flex flex-col">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white z-10">
+        <div>
+          <span id="viewId" class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded mr-2">GEM-000</span>
+          <h3 id="viewName" class="text-lg font-bold text-gray-900 inline-block">Gem 規格查看</h3>
+        </div>
+        <button type="button" onclick="closeModal('viewModal')" class="cursor-pointer text-gray-400 hover:text-gray-600 transition"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="p-6 overflow-y-auto flex-1 space-y-4">
+        <div>
+          <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">使用說明（需求規格）</h4>
+          <pre id="viewSpecification" class="bg-gray-50 p-4 rounded-xl text-sm font-mono whitespace-pre-wrap text-gray-700 border border-gray-100 max-h-96 overflow-y-auto selection:bg-amber-100"></pre>
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end space-x-2">
+        <button id="viewCopyBtn" class="cursor-pointer bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2 shadow-xs">
+          <i class="fa-regular fa-copy"></i>
+          <span>複製規格內容</span>
+        </button>
+        <button type="button" onclick="closeModal('viewModal')" class="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-10 opacity-0 pointer-events-none transition-all duration-300 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center space-x-2 text-sm">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toastMessage">操作成功</span>
+  </div>
+
+  <script>
+    // ⚠️ 請在此處填入您的 Google Apps Script 部署 URL (例如：https://script.google.com/macros/s/xxxx/exec)
+    const GAS_API_URL = ""; 
+
+    let allGems = [];
+    let currentCategory = '全部';
+    let currentPage = 1;
+    let pageSize = 10;
+
+    const CATEGORY_EMOJIS = {
+      '全部': '🌐', '影片生成': '🎬', '簡報生成': '📊', '簡報設計': '📐', '日常工作': '📅',
+      '程式開發': '💻', '圖片生成': '🎨', '翻譯寫作': '✍️', '創意寫作': '📝', '網站設計': '🌐',
+      '語言學習': '🗣️', 'Prompt 架構': '🏗️', '遊戲設計': '🎮', '逆向工程': '🔍', 'Agents': '🤖',
+      'ZeroType': '⌨️', '出題系統': '📝', '教育行政': '🏫', '計劃案': '📁', '數理學習': '🧮',
+      '教案設計': '📜', '其他': '🔮', '未分類': '💡'
+    };
+
+    function getEmoji(categoryName) {
+      if (!categoryName) return CATEGORY_EMOJIS['未分類'];
+      const name = categoryName.toString().trim();
+      if (name === '' || name === '全部') return CATEGORY_EMOJIS['全部'];
+      if (CATEGORY_EMOJIS[name]) return CATEGORY_EMOJIS[name];
+      for (let key in CATEGORY_EMOJIS) {
+        if (name.includes(key) || key.includes(name)) return CATEGORY_EMOJIS[key];
+      }
+      return CATEGORY_EMOJIS['未分類'];
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // 如果未設定 API 網址，給予使用者提示
+      if (!GAS_API_URL) {
+        showToast('請先在 index.html 程式碼中設定您的 GAS_API_URL 部署網址！', 'error');
+      } else {
+        fetchGemData();
+        fetchCategoryOptions();
+      }
+      
+      document.getElementById('searchInput').addEventListener('input', () => {
+        currentPage = 1;
+        renderTable();
+      });
+      
+      // 檔案選取監聽器，即時預覽本次選取的檔案
+      document.getElementById('gemFile').addEventListener('change', (e) => {
+        const listDiv = document.getElementById('newFilesList');
+        const ul = document.getElementById('newFilesUl');
+        ul.innerHTML = '';
+        if (e.target.files.length > 0) {
+          listDiv.classList.remove('hidden');
+          Array.from(e.target.files).forEach(file => {
+            const li = document.createElement('li');
+            li.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            ul.appendChild(li);
+          });
+        } else {
+          listDiv.classList.add('hidden');
+        }
+      });
+    });
+
+    function fetchGemData() {
+      showLoading(true);
+      fetch(`${GAS_API_URL}?action=getGemList`)
+        .then(response => response.json())
+        .then(res => {
+          if (res.status === 'success') {
+            allGems = res.gems || [];
+            document.getElementById('lastDeployTime').textContent = res.lastDeployTime || '未知';
+            renderFilterSelect(); 
+            renderTable();
+          } else {
+            showToast('資料載入失敗: ' + (res.message || '未知錯誤'), 'error');
+          }
+          showLoading(false);
+        })
+        .catch(err => {
+          showToast('無法連線至雲端資料庫: ' + err, 'error');
+          showLoading(false);
+        });
+    }
+
+    function fetchCategoryOptions() {
+      fetch(`${GAS_API_URL}?action=getCategoryOptions`)
+        .then(response => response.json())
+        .then(res => {
+          if (res.status === 'success' && res.categories) {
+            const select = document.getElementById('gemCategory');
+            if (select) {
+              select.innerHTML = '<option value="" disabled selected hidden>請選擇 Gem 類別...</option>';
+              res.categories.forEach(cat => {
+                if (cat && cat.toString().trim() !== '') {
+                  const opt = document.createElement('option');
+                  opt.value = cat.toString().trim();
+                  opt.textContent = `${getEmoji(cat)} ${cat}`;
+                  select.appendChild(opt);
+                }
+              });
+            }
+          }
+        })
+        .catch(err => console.error('無法載入分類選項:', err));
+    }
+
+    function renderFilterSelect() {
+      const select = document.getElementById('categoryFilterSelect');
+      const rawCategories = allGems.map(item => item['Gem類別']).filter(Boolean);
+      const uniqueCats = [...new Set(rawCategories)];
+      select.innerHTML = '<option value="全部">🌐 全部類別</option>';
+      uniqueCats.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat.toString().trim();
+        opt.textContent = `${getEmoji(cat)} ${cat}`;
+        if (currentCategory === cat.toString().trim()) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    function handleCategoryFilterChange() {
+      currentCategory = document.getElementById('categoryFilterSelect').value;
+      currentPage = 1; 
+      renderTable();
+    }
+
+    function handleGlobalFavoriteFilterChange() {
+      currentPage = 1; 
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('gemTableBody');
+      const searchKeyword = document.getElementById('searchInput').value.trim().toLowerCase();
+      const isFavOnlyChecked = document.getElementById('globalFavoriteFilter').checked;
+      
+      tbody.innerHTML = '';
+
+      const filtered = allGems.filter(item => {
+        const matchCategory = (currentCategory === '全部' || item['Gem類別'] === currentCategory);
+        const matchSearch = (!searchKeyword || (item['Gem名稱'] && item['Gem名稱'].toLowerCase().includes(searchKeyword)));
+        const isItemFav = item['收藏'] && (item['收藏'].toString().toUpperCase() === 'TRUE' || item['收藏'] === true);
+        const matchFavorite = !isFavOnlyChecked || isItemFav;
+        
+        return matchCategory && matchSearch && matchFavorite;
+      });
+
+      document.getElementById('totalRecordsText').textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        document.getElementById('tableContainer').classList.remove('hidden');
+        document.getElementById('emptyState').classList.remove('hidden');
+        document.getElementById('paginationControlZone').classList.add('hidden'); 
+        return;
+      }
+
+      document.getElementById('emptyState').classList.add('hidden');
+      document.getElementById('tableContainer').classList.remove('hidden');
+      document.getElementById('paginationControlZone').classList.remove('hidden');
+
+      let displayData = [];
+      let totalPages = 1;
+      
+      if (pageSize === 'all') {
+        displayData = filtered;
+        totalPages = 1;
+        currentPage = 1;
+      } else {
+        const size = parseInt(pageSize, 10);
+        totalPages = Math.ceil(filtered.length / size);
+        if (currentPage > totalPages) currentPage = totalPages;
+        const startIdx = (currentPage - 1) * size;
+        displayData = filtered.slice(startIdx, startIdx + size);
+      }
+
+      displayData.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50/70 transition';
+        
+        let filesHtml = '';
+        if (item['相關資訊'] && item['相關資訊'].toString().trim() !== '') {
+          var rawStr = item['相關資訊'].toString().trim();
+          if (rawStr.indexOf('[') === 0) {
+            try {
+              const filesArr = JSON.parse(rawStr);
+              filesArr.forEach(file => {
+                filesHtml += `<a href="${file.url}" target="_blank" class="text-amber-600 hover:text-amber-700 ml-1.5" title="${file.name}"><i class="fa-solid fa-paperclip"></i></a>`;
+              });
+            } catch(e) {}
+          }
+        }
+
+        const catName = item['Gem類別'] || '未分類';
+        const isFav = item['收藏'] && (item['收藏'].toString().toUpperCase() === 'TRUE' || item['收藏'] === true);
+        const favCellHtml = isFav 
+          ? `<span class="text-amber-500 text-lg flex items-center justify-center" title="已收藏"><i class="fa-solid fa-star"></i></span>`
+          : ``; 
+
+        tr.innerHTML = `
+          <td class="px-6 py-4 font-mono text-xs text-gray-500 font-semibold">${item['編號'] || '-'}</td>
+          <td class="px-6 py-4 whitespace-nowrap"><span class="bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded-md font-medium">${getEmoji(catName)} ${catName}</span></td>
+          <td class="px-6 py-4 font-medium text-gray-900">
+            <span onclick="viewSpecificationByRowIndex(${item.rowIndex})" class="cursor-pointer text-gray-900 hover:text-amber-600 hover:underline transition-all">
+              ${item['Gem名稱'] || '-'}
+            </span>
+            ${filesHtml}
+          </td>
+          <td class="px-6 py-4 text-center whitespace-nowrap">${favCellHtml}</td>
+          <td class="px-6 py-4 text-right space-x-1 whitespace-nowrap actions-cell"></td>
+        `;
+
+        const actionsCell = tr.querySelector('.actions-cell');
+        
+        const linkBtn = document.createElement('button');
+        linkBtn.type = 'button';
+        if (item['Gem連結'] && item['Gem連結'].toString().startsWith('http')) {
+          linkBtn.className = 'cursor-pointer bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg text-xs font-medium transition inline-flex items-center space-x-1';
+          linkBtn.onclick = () => window.open(item['Gem連結'].toString().trim(), '_blank');
+        } else {
+          linkBtn.className = 'bg-gray-50 border border-gray-200 text-gray-400 px-2.5 py-1.5 rounded-lg text-xs font-medium inline-flex items-center space-x-1 opacity-60 cursor-not-allowed';
+          linkBtn.disabled = true;
+        }
+        linkBtn.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square"></i><span>連結</span>';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'cursor-pointer bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-2.5 py-1.5 rounded-lg text-xs font-medium transition inline-flex items-center space-x-1';
+        copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i><span>複製</span>';
+        copyBtn.onclick = () => copyText(item['使用說明（需求規格）'] || '');
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'cursor-pointer bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg text-xs font-medium transition inline-flex items-center space-x-1';
+        editBtn.innerHTML = '<i class="fa-regular fa-pen-to-square"></i><span>編輯</span>';
+        editBtn.onclick = () => openFormModal('edit', item);
+
+        actionsCell.appendChild(linkBtn);
+        actionsCell.appendChild(copyBtn);
+        actionsCell.appendChild(editBtn);
+        tbody.appendChild(tr);
+      });
+
+      buildPaginationButtons(totalPages);
+    }
+
+    function viewSpecificationByRowIndex(targetRowIndex) {
+      const targetItem = allGems.find(item => item.rowIndex == targetRowIndex);
+      if (targetItem) viewSpecification(targetItem);
+    }
+
+    function buildPaginationButtons(totalPages) {
+      const container = document.getElementById('paginationButtons');
+      container.innerHTML = '';
+      if (totalPages <= 1) return;
+
+      const btnBaseClass = "px-2.5 py-1 rounded-md text-xs font-medium transition-all shadow-xs border ";
+      const activeClass = "bg-amber-500 text-white border-amber-500 font-bold shadow-xs";
+      const inactiveClass = "bg-white text-gray-600 border-gray-300 hover:bg-gray-50 cursor-pointer";
+      const disabledClass = "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed";
+
+      const prevBtn = document.createElement('button');
+      prevBtn.type = 'button';
+      prevBtn.innerHTML = '<i class="fa-solid fa-angle-left"></i>';
+      if (currentPage === 1) {
+        prevBtn.className = btnBaseClass + disabledClass; prevBtn.disabled = true;
+      } else {
+        prevBtn.className = btnBaseClass + inactiveClass; prevBtn.onclick = () => { currentPage--; renderTable(); };
+      }
+      container.appendChild(prevBtn);
+
+      for (let i = 1; i <= totalPages; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.type = 'button'; pageBtn.textContent = i;
+        pageBtn.className = btnBaseClass + (i === currentPage ? activeClass : inactiveClass);
+        if (i !== currentPage) pageBtn.onclick = () => { currentPage = i; renderTable(); };
+        container.appendChild(pageBtn);
+      }
+
+      const nextBtn = document.createElement('button');
+      nextBtn.type = 'button'; nextBtn.innerHTML = '<i class="fa-solid fa-angle-right"></i>';
+      if (currentPage === totalPages) {
+        nextBtn.className = btnBaseClass + disabledClass; nextBtn.disabled = true;
+      } else {
+        nextBtn.className = btnBaseClass + inactiveClass; nextBtn.onclick = () => { currentPage++; renderTable(); };
+      }
+      container.appendChild(nextBtn);
+    }
+
+    function handlePageSizeChange() {
+      pageSize = document.getElementById('pageSizeSelect').value;
+      currentPage = 1; renderTable();
+    }
+
+    function openFormModal(action, item = null) {
+      document.getElementById('gemForm').reset();
+      document.getElementById('formAction').value = action;
+      document.getElementById('newFilesList').classList.add('hidden');
+      document.getElementById('newFilesUl').innerHTML = '';
+      
+      const historyZone = document.getElementById('historyFilesZone');
+      const historyContainer = document.getElementById('historyFilesContainer');
+      historyContainer.innerHTML = ''; historyZone.classList.add('hidden');
+      
+      if (action === 'add') {
+        document.getElementById('modalTitle').textContent = '新增 Google Gem';
+        document.getElementById('formRowIndex').value = '';
+        document.getElementById('formFileUrl').value = '';
+        document.getElementById('gemUrl').value = ''; 
+        document.getElementById('gemIsFavorite').checked = false; 
+        document.getElementById('submitBtnText').textContent = '確認新增';
+      } else if (action === 'edit' && item) {
+        document.getElementById('modalTitle').textContent = `編輯 Gem 資料 (${item['編號']})`;
+        document.getElementById('formRowIndex').value = item.rowIndex;
+        document.getElementById('gemCategory').value = item['Gem類別'] || '';
+        document.getElementById('gemName').value = item['Gem名稱'] || '';
+        document.getElementById('gemDescription').value = item['說明（使用者）'] || '';
+        document.getElementById('gemSpecification').value = item['使用說明（需求規格）'] || '';
+        document.getElementById('gemTools').value = item['預設工具'] || '';
+        document.getElementById('gemSource').value = item['來源'] || '';
+        document.getElementById('formFileUrl').value = item['相關資訊'] || '';
+        document.getElementById('gemUrl').value = item['Gem連結'] || ''; 
+        
+        const isFav = item['收藏'] && (item['收藏'].toString().toUpperCase() === 'TRUE' || item['收藏'] === true);
+        document.getElementById('gemIsFavorite').checked = isFav;
+        
+        if (item['相關資訊'] && item['相關資訊'].toString().trim() !== '') {
+          var rawStr = item['相關資訊'].toString().trim();
+          if (rawStr.indexOf('[') === 0) {
+            try {
+              const filesArr = JSON.parse(rawStr);
+              if (filesArr.length > 0) {
+                historyZone.classList.remove('hidden');
+                filesArr.forEach(file => {
+                  const div = document.createElement('div');
+                  div.className = "flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-gray-200 text-xs shadow-xs hover:border-gray-300 transition";
+                  div.innerHTML = `
+                    <div class="flex items-center space-x-2 truncate pr-2">
+                      <i class="fa-solid fa-file-lines text-amber-500 flex-shrink-0"></i>
+                      <a href="${file.url}" target="_blank" class="text-gray-700 font-medium hover:text-amber-600 truncate underline" title="${file.name}">${file.name}</a>
+                    </div>
+                  `;
+                  const delBtn = document.createElement('button');
+                  delBtn.type = 'button';
+                  delBtn.className = "cursor-pointer text-gray-400 hover:text-rose-500 p-1 transition flex-shrink-0";
+                  delBtn.innerHTML = '<i class="fa-regular fa-trash-can text-sm"></i>';
+                  delBtn.onclick = () => executeFileDelete(item.rowIndex, file.id, item['相關資訊'], div);
+                  div.appendChild(delBtn);
+                  historyContainer.appendChild(div);
+                });
+              }
+            } catch(e) {}
+          }
+        }
+      }
+      
+      document.getElementById('deleteGemRecordBtn').classList.toggle('hidden', action === 'add');
+      document.getElementById('formModal').classList.remove('hidden');
+    }
+
+    function executeFileDelete(rowIndex, fileId, currentJson, elementJson) {
+      if (!confirm('⚠️ 確定要從 Google Drive 雲端硬碟中實體刪除此檔案嗎？')) return;
+      elementJson.style.opacity = '0.5';
+      
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify({
+          action: 'deleteFileFromDrive',
+          rowIndex: rowIndex,
+          fileId: fileId,
+          currentFilesJson: currentJson
+        })
+      })
+      .then(response => response.json())
+      .then((result) => {
+        if (result.status === 'success') {
+          showToast(result.message, 'success'); 
+          elementJson.remove();
+          document.getElementById('formFileUrl').value = result.updatedJson;
+          const target = allGems.find(g => g.rowIndex == rowIndex);
+          if (target) target['相關資訊'] = result.updatedJson;
+          renderTable(); 
+          if (result.updatedJson === '' || result.updatedJson === '[]') {
+            document.getElementById('historyFilesZone').classList.add('hidden');
+          }
+        } else {
+          showToast(result.message || '檔案刪除失敗', 'error');
+          elementJson.style.opacity = '1';
+        }
+      })
+      .catch(err => {
+        showToast('無法連線到伺服器: ' + err, 'error');
+        elementJson.style.opacity = '1';
+      });
+    }
+
+    function viewSpecification(item) {
+      document.getElementById('viewId').textContent = item['編號'] || 'GEM-000';
+      document.getElementById('viewName').textContent = item['Gem名稱'] || '未命名 Gem';
+      document.getElementById('viewSpecification').textContent = item['使用說明（需求規格）'] || '（無內容）';
+      document.getElementById('viewCopyBtn').onclick = () => copyText(item['使用說明（需求規格）'] || '');
+      document.getElementById('viewModal').classList.remove('hidden');
+    }
+
+    function closeModal(modalId) { document.getElementById(modalId).classList.add('hidden'); }
+
+    function handleFormSubmit(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const category = document.getElementById('gemCategory').value;
+      const name = document.getElementById('gemName').value.trim();
+      const specification = document.getElementById('gemSpecification').value.trim();
+      
+      if (!category || !name || !specification) { showToast('請填寫必填欄位！', 'error'); return; }
+
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+
+      const formData = {
+        action: document.getElementById('formAction').value,
+        rowIndex: document.getElementById('formRowIndex').value,
+        category: category,
+        name: name,
+        description: document.getElementById('gemDescription').value.trim(),
+        specification: specification,
+        tools: document.getElementById('gemTools').value.trim(),
+        source: document.getElementById('gemSource').value.trim(),
+        fileUrl: document.getElementById('formFileUrl').value,
+        gemUrl: document.getElementById('gemUrl').value.trim(), 
+        isFavorite: document.getElementById('gemIsFavorite').checked, 
+        filesArray: []
+      };
+
+      const fileInput = document.getElementById('gemFile');
+      if (fileInput.files.length > 0) {
+        document.getElementById('submitBtnText').textContent = '正在處理檔案...';
+        const readPromises = Array.from(fileInput.files).map(file => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (evt) => resolve({ data: evt.target.result, name: file.name });
+            reader.readAsDataURL(file);
+          });
+        });
+        Promise.all(readPromises).then(results => {
+          formData.filesArray = results;
+          sendDataToBackend(formData);
+        });
+      } else {
+        sendDataToBackend(formData);
+      }
+    }
+
+    function sendDataToBackend(formData) {
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify({
+          action: 'saveGemData',
+          formData: formData
+        })
+      })
+      .then(response => response.json())
+      .then((result) => {
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtnText').textContent = '儲存資料';
+        if (result.status === 'success') {
+          showToast(result.message, 'success');
+          closeModal('formModal');
+          currentPage = 1;
+          fetchGemData();
+        } else {
+          showToast(result.message || '儲存失敗', 'error');
+        }
+      })
+      .catch(err => {
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtnText').textContent = '儲存資料';
+        showToast('無法連線到伺服器: ' + err, 'error');
+      });
+    }
+
+    function handleRecordDelete() {
+      const rowIndex = document.getElementById('formRowIndex').value;
+      if (!confirm('⚠️ 確定要刪除這筆 Gem 資料嗎？')) return;
+      
+      const deleteBtn = document.getElementById('deleteGemRecordBtn');
+      deleteBtn.disabled = true;
+
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify({
+          action: 'deleteGemRecord',
+          rowIndex: rowIndex
+        })
+      })
+      .then(response => response.json())
+      .then((result) => {
+        deleteBtn.disabled = false;
+        if (result.status === 'success') {
+          showToast(result.message || '資料已移除', 'success');
+          closeModal('formModal'); 
+          fetchGemData();
+        } else {
+          showToast(result.message || '刪除失敗', 'error');
+        }
+      })
+      .catch(err => {
+        deleteBtn.disabled = false;
+        showToast('無法連線到伺服器: ' + err, 'error');
+      });
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => showToast('規格內容已成功複製！', 'success'));
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMessage').textContent = message;
+      document.getElementById('toastIcon').className = type === 'success' ? "fa-solid fa-circle-check text-emerald-400" : "fa-solid fa-circle-exclamation text-rose-400";
+      toast.classList.remove('translate-y-10', 'opacity-0', 'pointer-events-none');
+      setTimeout(() => { toast.classList.add('translate-y-10', 'opacity-0', 'pointer-events-none'); }, 3000);
+    }
+
+    function showLoading(isLoading) {
+      document.getElementById('loadingStatus').classList.toggle('hidden', !isLoading);
+    }
+  </script>
+</body>
+</html>
