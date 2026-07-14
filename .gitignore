@@ -2,3 +2,4 @@
 .gemini/
 .agents/
 *.tmp
+node_modules/

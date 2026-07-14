@@ -1,0 +1,20 @@
+{
+  "name": "gems-manager",
+  "version": "1.7.0",
+  "description": "Gems Manager frontend hosted on GitHub Pages with Google Apps Script decoupled backend API.",
+  "main": "index.html",
+  "scripts": {
+    "login": "clasp login",
+    "logout": "clasp logout",
+    "pull": "clasp pull",
+    "push": "clasp push",
+    "deploy": "clasp deploy",
+    "status": "clasp status"
+  },
+  "keywords": [],
+  "author": "Chieh Wu",
+  "license": "ISC",
+  "devDependencies": {
+    "@google/clasp": "^2.4.2"
+  }
+}
