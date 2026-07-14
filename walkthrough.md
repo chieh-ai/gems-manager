@@ -83,3 +83,19 @@
    - 已執行 `npm install` 將 clasp 及其套件安裝於專案本地，確保您可以隨時直接調用。
 3. **專案規格書更新**：
    - [project_specifications.md](file:///Users/chiehwu/.gemini/antigravity/brain/5c6a7be0-57af-45c5-ac00-f20986897e2c/project_specifications.md) 中已新增「Section 6. 後端 API clasp 自動部署工作流」，說明快捷指令的運作概念。
+
+---
+
+## 專案結構改裝完成（調整二：模組化分離） (2026-07-14)
+
+我們已成功將系統從「單一 HTML 檔」改裝為「高規格的三權分立架構」：
+1. **結構、樣式與邏輯徹底解耦**：
+   - **結構**：[index.html](file:///Users/chiehwu/Documents/Antigravity/Gems%20Manager/index.html) 如今只含有純淨的 HTML 標籤結構，不帶有任何內嵌 CSS 與 JS，可讀性大增。
+   - **樣式**：引入 Tailwind v4 CLI，由原始的 [src/input.css](file:///Users/chiehwu/Documents/Antigravity/Gems%20Manager/src/input.css) 編譯出高度壓縮的 [css/style.css](file:///Users/chiehwu/Documents/Antigravity/Gems%20Manager/css/style.css)，徹底解決首頁載入時無樣式閃爍的 FOUC 問題。
+   - **邏輯**：使用瀏覽器原生支援的 **ES6 模組 (`type="module"`)** 將邏輯解耦為三檔：
+     - [js/cache.js](file:///Users/chiehwu/Documents/Antigravity/Gems%20Manager/js/cache.js)：管理 `localStorage`、SWR 快取資料與訪問金鑰的讀寫存取。
+     - [js/api.js](file:///Users/chiehwu/Documents/Antigravity/Gems%20Manager/js/api.js)：負責與 GAS API 連線（Fetch 與 Post 請求）並統一攔截 `auth_failed` 授權失效事件。
+     - [js/app.js](file:///Users/chiehwu/Documents/Antigravity/Gems%20Manager/js/app.js)：主控程式，管理分頁與篩選狀態，處理 DOM 表格渲染、表單送出以及事件監聽。
+2. **Git 版本控制與自動發佈**：
+   - 所有拆分後的模組檔案已成功推送至 GitHub `chieh-ai/gems-manager.git` 的 `main` 分支。
+   - 線上網站已自動完成部署，運行更加敏捷且穩定。
