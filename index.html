@@ -110,7 +110,7 @@
         </div>
         <span class="hidden sm:inline text-gray-300">|</span>
         <div>
-          <i class="fa-solid fa-code-branch mr-1 text-gray-300"></i>Version：<span id="gasVersionDesc" class="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-sm">1.53 (Decoupled)</span>
+          <i class="fa-solid fa-code-branch mr-1 text-gray-300"></i>Version：<span id="gasVersionDesc" class="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-sm">1.60 (Protected)</span>
         </div>
       </div>
       <div class="font-medium tracking-wide text-gray-400 pt-1">
@@ -220,6 +220,7 @@
     </div>
   </div>
 
+  <!-- 🔍 升級版規格與元資料查看彈窗 (#viewModal) -->
   <div id="viewModal" class="fixed inset-0 z-50 hidden bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto border border-gray-100 flex flex-col">
       <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white z-10">
@@ -229,19 +230,74 @@
         </div>
         <button type="button" onclick="closeModal('viewModal')" class="cursor-pointer text-gray-400 hover:text-gray-600 transition"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
-      <div class="p-6 overflow-y-auto flex-1 space-y-4">
+      
+      <div class="p-6 overflow-y-auto flex-1 space-y-5">
+        <!-- 💡 說明描述 -->
+        <div id="viewDescriptionZone" class="hidden">
+          <h4 class="text-xs font-bold text-gray-450 uppercase tracking-wider mb-1 text-gray-400">說明與用途</h4>
+          <div id="viewDescription" class="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-200/60 leading-relaxed whitespace-pre-wrap"></div>
+        </div>
+        
+        <!-- 💡 中介資料徽章 (預設工具、來源) -->
+        <div class="grid grid-cols-2 gap-4">
+          <div id="viewToolsZone">
+            <h4 class="text-xs font-bold text-gray-450 uppercase tracking-wider mb-1 text-gray-400">適用預設工具</h4>
+            <span id="viewTools" class="inline-block bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded font-semibold border border-blue-100"></span>
+          </div>
+          <div id="viewSourceZone">
+            <h4 class="text-xs font-bold text-gray-450 uppercase tracking-wider mb-1 text-gray-400">來源</h4>
+            <span id="viewSource" class="inline-block bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded font-semibold border border-gray-200"></span>
+          </div>
+        </div>
+
+        <!-- 💡 相關附件檔案下載區 -->
+        <div id="viewFilesZone" class="hidden">
+          <h4 class="text-xs font-bold text-gray-450 uppercase tracking-wider mb-1.5 text-gray-400">相關附件檔案</h4>
+          <div id="viewFilesContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+        </div>
+
         <div>
-          <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">使用說明（需求規格）</h4>
+          <h4 class="text-xs font-bold text-gray-450 uppercase tracking-wider mb-1 text-gray-400">使用說明（需求規格 / 提示詞）</h4>
           <pre id="viewSpecification" class="bg-gray-50 p-4 rounded-xl text-sm font-mono whitespace-pre-wrap text-gray-700 border border-gray-100 max-h-96 overflow-y-auto selection:bg-amber-100"></pre>
         </div>
       </div>
-      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end space-x-2">
-        <button id="viewCopyBtn" class="cursor-pointer bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2 shadow-xs">
-          <i class="fa-regular fa-copy"></i>
-          <span>複製規格內容</span>
-        </button>
-        <button type="button" onclick="closeModal('viewModal')" class="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition">關閉</button>
+      
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <!-- 💡 直接開啟外部 Gem 連結按鈕 -->
+          <button id="viewUrlBtn" class="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center space-x-1.5 shadow-xs w-full sm:w-auto hidden">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span>開啟官方 Gem 連結</span>
+          </button>
+        </div>
+        <div class="flex justify-end space-x-2">
+          <button id="viewCopyBtn" class="cursor-pointer bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center space-x-2 shadow-xs">
+            <i class="fa-regular fa-copy"></i>
+            <span>複製規格內容</span>
+          </button>
+          <button type="button" onclick="closeModal('viewModal')" class="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition">關閉</button>
+        </div>
       </div>
+    </div>
+  </div>
+
+  <!-- 🔑 訪問金鑰防護罩彈窗 (#authModal) -->
+  <div id="authModal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 border border-gray-100 flex flex-col text-center space-y-6">
+      <div class="mx-auto bg-amber-500 text-white p-4 rounded-full w-16 h-16 flex items-center justify-center shadow-lg">
+        <i class="fa-solid fa-lock text-2xl"></i>
+      </div>
+      <div>
+        <h2 class="text-xl font-bold text-gray-900">輸入訪問金鑰</h2>
+        <p class="text-xs text-gray-500 mt-1">本系統設有安全防護，請輸入正確的金鑰以解鎖資料庫。</p>
+      </div>
+      <div class="space-y-2 text-left">
+        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide">存取金鑰 (Access Code)</label>
+        <input type="password" id="authCodeInput" placeholder="請輸入金鑰密碼..." class="w-full px-4 py-3 border border-gray-300 rounded-xl text-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono">
+      </div>
+      <button id="authSubmitBtn" onclick="handleAuthSubmit()" class="cursor-pointer w-full bg-gray-900 hover:bg-gray-800 text-white py-3 rounded-xl text-sm font-semibold transition shadow-md">
+        驗證金鑰並解鎖
+      </button>
     </div>
   </div>
 
@@ -278,20 +334,34 @@
       return CATEGORY_EMOJIS['未分類'];
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      // 如果未設定 API 網址，給予使用者提示
-      if (!GAS_API_URL) {
-        showToast('請先在 index.html 程式碼中設定您的 GAS_API_URL 部署網址！', 'error');
+    // 🛡️ 取得金鑰認證輔助函式
+    function getAccessCode() {
+      return localStorage.getItem('gems_access_code') || '';
+    }
+
+    function showAuthModal(show) {
+      const modal = document.getElementById('authModal');
+      if (show) {
+        modal.classList.remove('hidden');
+        document.getElementById('authCodeInput').focus();
       } else {
-        fetchGemData();
-        fetchCategoryOptions();
+        modal.classList.add('hidden');
       }
-      
-      document.getElementById('searchInput').addEventListener('input', () => {
-        currentPage = 1;
-        renderTable();
-      });
-      
+    }
+
+    function handleAuthSubmit() {
+      const input = document.getElementById('authCodeInput').value.trim();
+      if (!input) {
+        showToast('請輸入訪問金鑰！', 'error');
+        return;
+      }
+      localStorage.setItem('gems_access_code', input);
+      showAuthModal(false);
+      fetchGemData();
+      fetchCategoryOptions();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
       // 檔案選取監聽器，即時預覽本次選取的檔案
       document.getElementById('gemFile').addEventListener('change', (e) => {
         const listDiv = document.getElementById('newFilesList');
@@ -308,11 +378,37 @@
           listDiv.classList.add('hidden');
         }
       });
+
+      // 監聽金鑰輸入框的 Enter 鍵
+      document.getElementById('authCodeInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleAuthSubmit();
+      });
+
+      // 如果未設定 API 網址，給予使用者提示
+      if (!GAS_API_URL) {
+        showToast('請先在 index.html 程式碼中設定您的 GAS_API_URL 部署網址！', 'error');
+        return;
+      }
+
+      // 檢查本地是否已經有金鑰快取
+      const code = getAccessCode();
+      if (!code) {
+        showAuthModal(true);
+      } else {
+        fetchGemData();
+        fetchCategoryOptions();
+      }
+      
+      document.getElementById('searchInput').addEventListener('input', () => {
+        currentPage = 1;
+        renderTable();
+      });
     });
 
     function fetchGemData() {
       showLoading(true);
-      fetch(`${GAS_API_URL}?action=getGemList`)
+      const code = getAccessCode();
+      fetch(`${GAS_API_URL}?action=getGemList&accessCode=${encodeURIComponent(code)}`)
         .then(response => response.json())
         .then(res => {
           if (res.status === 'success') {
@@ -320,6 +416,10 @@
             document.getElementById('lastDeployTime').textContent = res.lastDeployTime || '未知';
             renderFilterSelect(); 
             renderTable();
+          } else if (res.code === 'auth_failed') {
+            showToast(res.message, 'error');
+            localStorage.removeItem('gems_access_code');
+            showAuthModal(true);
           } else {
             showToast('資料載入失敗: ' + (res.message || '未知錯誤'), 'error');
           }
@@ -332,7 +432,8 @@
     }
 
     function fetchCategoryOptions() {
-      fetch(`${GAS_API_URL}?action=getCategoryOptions`)
+      const code = getAccessCode();
+      fetch(`${GAS_API_URL}?action=getCategoryOptions&accessCode=${encodeURIComponent(code)}`)
         .then(response => response.json())
         .then(res => {
           if (res.status === 'success' && res.categories) {
@@ -348,6 +449,9 @@
                 }
               });
             }
+          } else if (res.code === 'auth_failed') {
+            localStorage.removeItem('gems_access_code');
+            showAuthModal(true);
           }
         })
         .catch(err => console.error('無法載入分類選項:', err));
@@ -617,6 +721,7 @@
         },
         body: JSON.stringify({
           action: 'deleteFileFromDrive',
+          accessCode: getAccessCode(),
           rowIndex: rowIndex,
           fileId: fileId,
           currentFilesJson: currentJson
@@ -634,6 +739,11 @@
           if (result.updatedJson === '' || result.updatedJson === '[]') {
             document.getElementById('historyFilesZone').classList.add('hidden');
           }
+        } else if (result.code === 'auth_failed') {
+          showToast(result.message, 'error');
+          localStorage.removeItem('gems_access_code');
+          showAuthModal(true);
+          elementJson.style.opacity = '1';
         } else {
           showToast(result.message || '檔案刪除失敗', 'error');
           elementJson.style.opacity = '1';
@@ -645,11 +755,86 @@
       });
     }
 
+    // 🔍 升級版規格與中介資料展示
     function viewSpecification(item) {
       document.getElementById('viewId').textContent = item['編號'] || 'GEM-000';
       document.getElementById('viewName').textContent = item['Gem名稱'] || '未命名 Gem';
       document.getElementById('viewSpecification').textContent = item['使用說明（需求規格）'] || '（無內容）';
       document.getElementById('viewCopyBtn').onclick = () => copyText(item['使用說明（需求規格）'] || '');
+
+      // 💡 顯示說明描述
+      const descZone = document.getElementById('viewDescriptionZone');
+      const desc = document.getElementById('viewDescription');
+      if (item['說明（使用者）'] && item['說明（使用者）'].toString().trim() !== '') {
+        desc.textContent = item['說明（使用者）'].toString().trim();
+        descZone.classList.remove('hidden');
+      } else {
+        descZone.classList.add('hidden');
+      }
+
+      // 💡 顯示預設工具
+      const toolsZone = document.getElementById('viewToolsZone');
+      const tools = document.getElementById('viewTools');
+      if (item['預設工具'] && item['預設工具'].toString().trim() !== '') {
+        tools.textContent = item['預設工具'].toString().trim();
+        toolsZone.classList.remove('hidden');
+      } else {
+        toolsZone.classList.add('hidden');
+      }
+
+      // 💡 顯示來源
+      const srcZone = document.getElementById('viewSourceZone');
+      const src = document.getElementById('viewSource');
+      if (item['來源'] && item['來源'].toString().trim() !== '') {
+        src.textContent = item['來源'].toString().trim();
+        srcZone.classList.remove('hidden');
+      } else {
+        srcZone.classList.add('hidden');
+      }
+
+      // 💡 顯示開啟 Gem 連結按鈕
+      const urlBtn = document.getElementById('viewUrlBtn');
+      if (item['Gem連結'] && item['Gem連結'].toString().startsWith('http')) {
+        urlBtn.onclick = () => window.open(item['Gem連結'].toString().trim(), '_blank');
+        urlBtn.classList.remove('hidden');
+      } else {
+        urlBtn.classList.add('hidden');
+      }
+
+      // 💡 顯示附件下載清單
+      const filesZone = document.getElementById('viewFilesZone');
+      const container = document.getElementById('viewFilesContainer');
+      container.innerHTML = '';
+      
+      let filesArr = [];
+      if (item['相關資訊'] && item['相關資訊'].toString().trim() !== '') {
+        var rawStr = item['相關資訊'].toString().trim();
+        if (rawStr.indexOf('[') === 0) {
+          try {
+            filesArr = JSON.parse(rawStr);
+          } catch(e) {
+            filesArr = [];
+          }
+        }
+      }
+
+      if (filesArr.length > 0) {
+        filesArr.forEach(file => {
+          const a = document.createElement('a');
+          a.href = file.url;
+          a.target = '_blank';
+          a.className = "flex items-center space-x-2 bg-amber-50 hover:bg-amber-100 text-amber-800 px-3 py-2 rounded-lg border border-amber-200 text-xs font-semibold transition truncate";
+          a.innerHTML = `
+            <i class="fa-solid fa-file-arrow-down text-amber-600 flex-shrink-0 text-sm"></i>
+            <span class="truncate underline text-left" title="${file.name}">${file.name}</span>
+          `;
+          container.appendChild(a);
+        });
+        filesZone.classList.remove('hidden');
+      } else {
+        filesZone.classList.add('hidden');
+      }
+
       document.getElementById('viewModal').classList.remove('hidden');
     }
 
@@ -701,6 +886,9 @@
     }
 
     function sendDataToBackend(formData) {
+      const submitBtn = document.getElementById('submitBtn');
+      const submitBtnText = document.getElementById('submitBtnText');
+      
       fetch(GAS_API_URL, {
         method: 'POST',
         headers: {
@@ -708,25 +896,30 @@
         },
         body: JSON.stringify({
           action: 'saveGemData',
+          accessCode: getAccessCode(),
           formData: formData
         })
       })
       .then(response => response.json())
       .then((result) => {
-        document.getElementById('submitBtn').disabled = false;
-        document.getElementById('submitBtnText').textContent = '儲存資料';
+        submitBtn.disabled = false;
+        submitBtnText.textContent = '儲存資料';
         if (result.status === 'success') {
           showToast(result.message, 'success');
           closeModal('formModal');
           currentPage = 1;
           fetchGemData();
+        } else if (result.code === 'auth_failed') {
+          showToast(result.message, 'error');
+          localStorage.removeItem('gems_access_code');
+          showAuthModal(true);
         } else {
           showToast(result.message || '儲存失敗', 'error');
         }
       })
       .catch(err => {
-        document.getElementById('submitBtn').disabled = false;
-        document.getElementById('submitBtnText').textContent = '儲存資料';
+        submitBtn.disabled = false;
+        submitBtnText.textContent = '儲存資料';
         showToast('無法連線到伺服器: ' + err, 'error');
       });
     }
@@ -745,6 +938,7 @@
         },
         body: JSON.stringify({
           action: 'deleteGemRecord',
+          accessCode: getAccessCode(),
           rowIndex: rowIndex
         })
       })
@@ -755,6 +949,10 @@
           showToast(result.message || '資料已移除', 'success');
           closeModal('formModal'); 
           fetchGemData();
+        } else if (result.code === 'auth_failed') {
+          showToast(result.message, 'error');
+          localStorage.removeItem('gems_access_code');
+          showAuthModal(true);
         } else {
           showToast(result.message || '刪除失敗', 'error');
         }
