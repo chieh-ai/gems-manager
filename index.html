@@ -110,7 +110,7 @@
         </div>
         <span class="hidden sm:inline text-gray-300">|</span>
         <div>
-          <i class="fa-solid fa-code-branch mr-1 text-gray-300"></i>Version：<span id="gasVersionDesc" class="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-sm">1.60 (Protected)</span>
+          <i class="fa-solid fa-code-branch mr-1 text-gray-300"></i>Version：<span id="gasVersionDesc" class="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-sm">1.70 (SWR Caching)</span>
         </div>
       </div>
       <div class="font-medium tracking-wide text-gray-400 pt-1">
@@ -357,7 +357,54 @@
       }
       localStorage.setItem('gems_access_code', input);
       showAuthModal(false);
-      fetchGemData();
+      initPageData(); // 💡 統一初始化入口
+    }
+
+    // 🛡️ 取得快取資料
+    function getGemsCache() {
+      try {
+        const cached = localStorage.getItem('gems_manager_cache');
+        return cached ? JSON.parse(cached) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // 🛡️ 設定快取資料
+    function setGemsCache(gems, time) {
+      try {
+        localStorage.setItem('gems_manager_cache', JSON.stringify(gems));
+        localStorage.setItem('gems_manager_cache_time', time);
+      } catch (e) {
+        console.error('寫入本地快取失敗:', e);
+      }
+    }
+
+    // 🛡️ 統一網頁資料初始化入口
+    function initPageData() {
+      const code = getAccessCode();
+      if (!code) {
+        showAuthModal(true);
+        return;
+      }
+
+      // SWR 機制：先試著載入本地快取，完成 0.1 秒極速秒開
+      const cachedGems = getGemsCache();
+      const cachedTime = localStorage.getItem('gems_manager_cache_time');
+      
+      if (cachedGems && cachedGems.length > 0) {
+        allGems = cachedGems;
+        document.getElementById('lastDeployTime').textContent = cachedTime || '快取載入';
+        renderFilterSelect();
+        renderTable();
+        showLoading(false);
+        // 背景靜默同步最新資料
+        fetchGemData(true);
+      } else {
+        // 沒有快取，則進行阻擋式載入
+        fetchGemData(false);
+      }
+      
       fetchCategoryOptions();
     }
 
@@ -390,14 +437,8 @@
         return;
       }
 
-      // 檢查本地是否已經有金鑰快取
-      const code = getAccessCode();
-      if (!code) {
-        showAuthModal(true);
-      } else {
-        fetchGemData();
-        fetchCategoryOptions();
-      }
+      // 💡 執行統一初始化
+      initPageData();
       
       document.getElementById('searchInput').addEventListener('input', () => {
         currentPage = 1;
@@ -405,20 +446,39 @@
       });
     });
 
-    function fetchGemData() {
-      showLoading(true);
+    function fetchGemData(isSilent = false) {
+      if (!isSilent) {
+        showLoading(true);
+      }
       const code = getAccessCode();
       fetch(`${GAS_API_URL}?action=getGemList&accessCode=${encodeURIComponent(code)}`)
         .then(response => response.json())
         .then(res => {
           if (res.status === 'success') {
-            allGems = res.gems || [];
-            document.getElementById('lastDeployTime').textContent = res.lastDeployTime || '未知';
-            renderFilterSelect(); 
-            renderTable();
+            const newGems = res.gems || [];
+            const newTime = res.lastDeployTime || '未知';
+            
+            // 比對新舊資料結構是否完全一致
+            const oldGemsStr = localStorage.getItem('gems_manager_cache');
+            const newGemsStr = JSON.stringify(newGems);
+            
+            // 如果資料有變動，或者不是靜默讀取，則重繪介面與更新快取
+            if (oldGemsStr !== newGemsStr || !isSilent) {
+              allGems = newGems;
+              document.getElementById('lastDeployTime').textContent = newTime;
+              setGemsCache(newGems, newTime);
+              renderFilterSelect(); 
+              renderTable();
+              
+              if (isSilent && oldGemsStr) {
+                showToast('雲端資料已同步更新！', 'success');
+              }
+            }
           } else if (res.code === 'auth_failed') {
             showToast(res.message, 'error');
             localStorage.removeItem('gems_access_code');
+            localStorage.removeItem('gems_manager_cache');
+            localStorage.removeItem('gems_manager_cache_time');
             showAuthModal(true);
           } else {
             showToast('資料載入失敗: ' + (res.message || '未知錯誤'), 'error');
@@ -451,6 +511,8 @@
             }
           } else if (res.code === 'auth_failed') {
             localStorage.removeItem('gems_access_code');
+            localStorage.removeItem('gems_manager_cache');
+            localStorage.removeItem('gems_manager_cache_time');
             showAuthModal(true);
           }
         })
@@ -735,6 +797,10 @@
           document.getElementById('formFileUrl').value = result.updatedJson;
           const target = allGems.find(g => g.rowIndex == rowIndex);
           if (target) target['相關資訊'] = result.updatedJson;
+          
+          // 💡 同步更新本地快取資料，確保快取資料最終一致
+          setGemsCache(allGems, document.getElementById('lastDeployTime').textContent);
+          
           renderTable(); 
           if (result.updatedJson === '' || result.updatedJson === '[]') {
             document.getElementById('historyFilesZone').classList.add('hidden');
@@ -742,6 +808,8 @@
         } else if (result.code === 'auth_failed') {
           showToast(result.message, 'error');
           localStorage.removeItem('gems_access_code');
+          localStorage.removeItem('gems_manager_cache');
+          localStorage.removeItem('gems_manager_cache_time');
           showAuthModal(true);
           elementJson.style.opacity = '1';
         } else {
@@ -908,7 +976,7 @@
           showToast(result.message, 'success');
           closeModal('formModal');
           currentPage = 1;
-          fetchGemData();
+          fetchGemData(false); // 💡 強制進行阻擋式同步，確保快取更新
         } else if (result.code === 'auth_failed') {
           showToast(result.message, 'error');
           localStorage.removeItem('gems_access_code');
@@ -948,7 +1016,7 @@
         if (result.status === 'success') {
           showToast(result.message || '資料已移除', 'success');
           closeModal('formModal'); 
-          fetchGemData();
+          fetchGemData(false); // 💡 強制阻擋式同步
         } else if (result.code === 'auth_failed') {
           showToast(result.message, 'error');
           localStorage.removeItem('gems_access_code');
