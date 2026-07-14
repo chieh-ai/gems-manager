@@ -1,10 +1,11 @@
 /**
  * ====================================================================
- * Google Apps Script 提示詞管理系統後端核心程式碼 (Code.gs) - Decoupled API 版
+ * Google Apps Script 提示詞管理系統後端核心程式碼 (Code.gs) - Decoupled API 版 (含安全驗證)
  * ====================================================================
  */
 
 // 🌍 全域常數設定
+var SECRET_ACCESS_CODE = 'chieh827'; // 💡 存取金鑰密碼，您可以修改此常數變更密碼
 var SPREADSHEET_ID = '1Lq75EtfQCyfpDPYGUMIrMIuhLmeEdZtEi8THLOHUq7A'; // 💡 指定的 Google Sheets ID
 var SPREADSHEET_SHEET_NAME = 'GemList';
 var TARGET_FOLDER_NAME = 'Reference'; // 💡 修改上傳資料夾名稱為 Reference
@@ -29,9 +30,19 @@ function getSpreadsheet() {
  * 網頁進入點 (GET 請求)：處理讀取資料的 API 請求
  */
 function doGet(e) {
-  var action = e && e.parameter && e.parameter.action;
-  
   try {
+    // 🛡️ 安全存取金鑰驗證
+    var accessCode = e && e.parameter && e.parameter.accessCode;
+    if (accessCode !== SECRET_ACCESS_CODE) {
+      return makeJsonResponse({ 
+        status: 'error', 
+        code: 'auth_failed', 
+        message: '存取金鑰無效，拒絕讀取資料。' 
+      });
+    }
+
+    var action = e && e.parameter && e.parameter.action;
+    
     if (action === 'getGemList') {
       var list = getGemList();
       var lastDeployTime = getLastUpdatedTime();
@@ -43,10 +54,10 @@ function doGet(e) {
       return makeJsonResponse({ status: 'success', categories: options });
     }
     
-    // 如果是直接瀏覽 (無 action 參數)，回傳簡單的運作狀態說明
+    // 如果是直接瀏覽且金鑰正確 (無 action 參數)，回傳簡單的運作狀態說明
     return makeJsonResponse({ 
       status: 'ok', 
-      message: 'Gems Manager API 後端正常運作中。請使用前端網頁進行操作。',
+      message: 'Gems Manager API 後端驗證成功，運作正常。',
       lastDeployTime: getLastUpdatedTime()
     });
   } catch (err) {
@@ -66,6 +77,17 @@ function doPost(e) {
     }
     
     var payload = JSON.parse(e.postData.contents);
+    
+    // 🛡️ 安全存取金鑰驗證
+    var accessCode = payload.accessCode;
+    if (accessCode !== SECRET_ACCESS_CODE) {
+      return makeJsonResponse({ 
+        status: 'error', 
+        code: 'auth_failed', 
+        message: '存取金鑰無效，拒絕寫入與修改資料。' 
+      });
+    }
+
     var action = payload.action;
     var formData = payload.formData;
     
@@ -85,7 +107,7 @@ function doPost(e) {
 }
 
 /**
- * 輔助函式：建立標準的 JSON 回傳格式
+ * 輔助函式：建立標準認證的 JSON 回傳格式
  */
 function makeJsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
@@ -96,7 +118,7 @@ function makeJsonResponse(data) {
  * 取得本 Apps Script 專案在雲端硬碟的最後更新時間
  */
 function getLastUpdatedTime() {
-  var lastUpdatedStr = "2026-07-14 09:40"; // 安全備用時間
+  var lastUpdatedStr = "2026-07-14 09:55"; // 安全備用時間
   try {
     var scriptId = ScriptApp.getScriptId();
     var scriptFile = DriveApp.getFileById(scriptId);
