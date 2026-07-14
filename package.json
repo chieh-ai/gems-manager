@@ -9,12 +9,15 @@
     "pull": "clasp pull",
     "push": "clasp push",
     "deploy": "clasp deploy",
-    "status": "clasp status"
+    "status": "clasp status",
+    "build:css": "tailwindcss -i ./src/input.css -o ./css/style.css --minify",
+    "watch:css": "tailwindcss -i ./src/input.css -o ./css/style.css --watch"
   },
   "keywords": [],
   "author": "Chieh Wu",
   "license": "ISC",
   "devDependencies": {
-    "@google/clasp": "^2.4.2"
+    "@google/clasp": "^2.4.2",
+    "@tailwindcss/cli": "^4.0.0"
   }
 }
